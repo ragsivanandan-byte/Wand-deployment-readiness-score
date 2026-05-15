@@ -15,10 +15,12 @@ JUDGE_MODEL = "claude-sonnet-4-6"
 
 # USD per 1M tokens. Sourced from Anthropic public pricing as of 2026-05.
 # Kept in code (not a config file) so the report's cost numbers are reproducible
-# from the commit alone.
+# from the commit alone. Keys cover both the alias and the dated snapshot so
+# token-usage records from either form land on the same pricing row.
 PRICING = {
-    "claude-haiku-4-5":   {"input": 1.00, "output": 5.00},
-    "claude-sonnet-4-6":  {"input": 3.00, "output": 15.00},
+    "claude-haiku-4-5":             {"input": 1.00, "output": 5.00},
+    "claude-haiku-4-5-20251001":    {"input": 1.00, "output": 5.00},
+    "claude-sonnet-4-6":            {"input": 3.00, "output": 15.00},
 }
 
 # Pass/fail thresholds. Tweaking these moves the GO/NO-GO line — the report

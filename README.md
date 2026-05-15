@@ -170,8 +170,10 @@ Built as a Forward Deployed Engineer reference implementation. Vertical
 shipped: **finance / buy-side earnings**. 33 test cases. Tested end-to-end
 in CI. Report deploys automatically to GitHub Pages.
 
-See [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) for the 60-second walk-through.
-See [`docs/DECISIONS.md`](docs/DECISIONS.md) for design trade-offs.
+- [`docs/SETUP.md`](docs/SETUP.md) — three-step first-time configuration
+  (App permissions, GitHub Pages, API key).
+- [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) — 60-second walk-through.
+- [`docs/DECISIONS.md`](docs/DECISIONS.md) — design trade-offs.
 
 ---
 
