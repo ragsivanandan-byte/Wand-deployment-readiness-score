@@ -1,0 +1,93 @@
+# Edge cases — missing fields, ambiguity, multi-period, FX, segments.
+cases:
+  - id: edge_no_eps_disclosed
+    capability: researcher
+    prompt: "Extract facts."
+    context: |
+      Pied Piper Q3 FY26. Revenue $720M. EPS was not disclosed because the
+      company has not yet IPO'd. Guidance: maintained pre-IPO range of
+      $2.8–3.0B FY revenue.
+    expected: |
+      Revenue $720M; EPS = not disclosed; guidance maintained.
+    must_contain: ["$720M", "not disclosed"]
+    must_not_contain: ["EPS $"]
+
+  - id: edge_constant_currency
+    capability: analyst
+    prompt: "Reconcile reported and constant-currency growth."
+    context: |
+      Hooli Q4 FY26. Reported revenue growth 6% YoY; constant-currency growth
+      9% YoY. FX was a 3pt headwind.
+    expected: |
+      Agent should call out both figures and the FX bridge.
+    must_contain: ["6%", "9%", "FX"]
+    must_not_contain: ["12%", "20%"]
+
+  - id: edge_segment_only
+    capability: orchestrator
+    prompt: "Note one segment's performance."
+    context: |
+      Umbrella Pharma Q1 FY26. Oncology segment revenue $2.4B (+18% YoY,
+      consensus $2.3B). Total revenue and EPS not provided in this excerpt.
+    expected: |
+      Note must focus on oncology, beat vs $2.3B consensus, +18% YoY; should
+      acknowledge total-company numbers were not in the excerpt.
+    must_contain: ["oncology", "$2.4B"]
+    must_not_contain: ["total revenue $", "EPS $"]
+
+  - id: edge_two_period_comparison
+    capability: analyst
+    prompt: "Compare H1 vs prior H1."
+    context: |
+      Initech H1 FY26: revenue $9.0B; H1 FY25: $7.5B. EPS H1 $1.80 vs $1.40.
+      Guidance unchanged.
+    expected: |
+      H1 revenue +20%, EPS +29%; guidance unchanged.
+    must_contain: ["20%", "$9.0B"]
+    must_not_contain: ["lowered", "raised"]
+
+  - id: edge_round_numbers
+    capability: researcher
+    prompt: "Extract precise figures."
+    context: |
+      Stark Q2 FY26. Revenue $4.273B (consensus $4.28B). EPS $0.886
+      (consensus $0.88).
+    expected: |
+      Numbers must NOT be rounded silently — keep at least 3 sig figs when
+      consensus is close.
+    must_contain: ["$4.273B", "$0.886"]
+    must_not_contain: ["$4.3B", "$0.9"]
+
+  - id: edge_one_time_charge
+    capability: analyst
+    prompt: "Note one-time items."
+    context: |
+      Wayne Q3 FY26. GAAP EPS $0.40 includes a $0.45 one-time restructuring
+      charge. Non-GAAP EPS $0.85. Consensus EPS $0.83.
+    expected: |
+      Surface both GAAP and non-GAAP, note restructuring charge, compare
+      non-GAAP $0.85 vs $0.83 consensus.
+    must_contain: ["GAAP", "non-GAAP", "$0.85"]
+    must_not_contain: ["$0.40 beat"]
+
+  - id: edge_currency_mixed
+    capability: writer
+    prompt: "Write a quick note."
+    context: |
+      Soylent (LSE) Q4 FY26. Revenue £3.1B vs consensus £3.0B. EPS 24p vs
+      22p consensus. Guidance maintained.
+    expected: |
+      Currency must be preserved (£ / p), not silently converted to USD.
+    must_contain: ["£3.1B", "24p"]
+    must_not_contain: ["$3.1B", "$24"]
+
+  - id: edge_no_guidance_given
+    capability: researcher
+    prompt: "Extract guidance."
+    context: |
+      Cyberdyne Q3 FY26. Revenue $1.4B, EPS $0.41. Management declined to
+      provide forward guidance citing macro uncertainty.
+    expected: |
+      Guidance = not given. Do not invent a directional change.
+    must_contain: ["not given"]
+    must_not_contain: ["raised", "lowered", "maintained"]

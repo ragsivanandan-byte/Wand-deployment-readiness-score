@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wand Deployment Readiness — {{ run_id }}</title>
+<style>
+  :root {
+    --bg: #0b1020;
+    --panel: #111934;
+    --panel-2: #182146;
+    --ink: #e6ebff;
+    --muted: #8c97c2;
+    --line: #233063;
+    --accent: #7c9cff;
+    --green: #10b981;
+    --red: #ef4444;
+    --amber: #f59e0b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5}
+  a{color:var(--accent)}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 24px 80px}
+  header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:24px;margin-bottom:32px}
+  header h1{font-size:22px;margin:0 0 6px 0;font-weight:600;letter-spacing:-0.01em}
+  header .sub{color:var(--muted);font-size:13px}
+  header .meta{font-size:12px;color:var(--muted);text-align:right}
+  header .meta code{color:var(--ink);background:var(--panel);padding:2px 6px;border-radius:4px;font-size:11px}
+
+  .verdict{display:flex;align-items:center;gap:20px;padding:28px;border-radius:12px;margin-bottom:32px;border:1px solid var(--line)}
+  .verdict.go{background:linear-gradient(135deg,#063e2a 0%,#0a5e3f 100%);border-color:#0f7a55}
+  .verdict.nogo{background:linear-gradient(135deg,#4a0d1a 0%,#7b1424 100%);border-color:#a8253a}
+  .verdict .badge{font-size:42px;font-weight:700;letter-spacing:0.05em}
+  .verdict .label{font-size:14px;text-transform:uppercase;letter-spacing:0.15em;color:rgba(255,255,255,0.8);margin-bottom:4px}
+  .verdict .desc{font-size:15px;opacity:0.95}
+
+  h2{font-size:14px;text-transform:uppercase;letter-spacing:0.12em;color:var(--muted);font-weight:600;margin:40px 0 16px}
+
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+  .tile .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em}
+  .tile .v{font-size:24px;font-weight:600;margin-top:8px}
+  .tile .v.green{color:var(--green)}
+  .tile .v.red{color:var(--red)}
+  .tile .thr{font-size:11px;color:var(--muted);margin-top:4px}
+
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{padding:10px 14px;text-align:left;font-size:13px;border-bottom:1px solid var(--line)}
+  th{background:var(--panel-2);color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-size:11px;font-weight:600}
+  tr:last-child td{border-bottom:none}
+  .check-ok{color:var(--green);font-weight:600}
+  .check-fail{color:var(--red);font-weight:600}
+
+  .heatmap{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;overflow-x:auto}
+  .heatmap table{border:none;background:transparent}
+  .heatmap th{background:transparent;border:none;font-weight:500}
+  .heatmap td{border:none;padding:6px}
+  .cell{display:flex;align-items:center;justify-content:center;height:44px;min-width:80px;border-radius:6px;font-weight:600;font-size:13px;color:#0b1020}
+  .cell.empty{background:#1f2937;color:var(--muted)}
+  .cell small{display:block;font-size:10px;font-weight:400;opacity:0.85}
+
+  .failures{display:grid;gap:12px}
+  .fail{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--red);border-radius:8px;padding:14px 16px}
+  .fail .head{display:flex;justify-content:space-between;gap:12px;align-items:baseline;margin-bottom:8px}
+  .fail .id{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--accent)}
+  .fail .scores{font-size:11px;color:var(--muted)}
+  .fail .scores span{display:inline-block;margin-left:10px}
+  .fail .prompt{color:var(--muted);font-size:13px;margin-bottom:8px}
+  .fail .rationale{font-size:13px;color:#fda4af;margin-bottom:8px}
+  .fail pre{background:#0a1230;border:1px solid var(--line);border-radius:6px;padding:10px;font-size:11.5px;color:#d4dcff;white-space:pre-wrap;word-break:break-word;margin:0;max-height:200px;overflow:auto}
+
+  .regression{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .reg-card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px}
+  .reg-card .n{font-size:32px;font-weight:600}
+  .reg-card.win .n{color:var(--green)}
+  .reg-card.loss .n{color:var(--red)}
+  .reg-card .lbl{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em}
+  .reg-list{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--muted);margin-top:6px;word-break:break-all}
+
+  footer{margin-top:60px;padding-top:24px;border-top:1px solid var(--line);color:var(--muted);font-size:11px}
+  footer code{background:var(--panel);padding:1px 5px;border-radius:3px;color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <h1>Wand Deployment Readiness Harness</h1>
+    <div class="sub">Buy-side earnings workflow · {{ agg.n }} test cases · {{ generated_at[:19] }}Z</div>
+  </div>
+  <div class="meta">
+    run <code>{{ run_id }}</code><br>
+    mode <code>{{ mode }}</code> · target <code>{{ target_model }}</code> · judge <code>{{ judge_model }}</code><br>
+    rubric <code>{{ rubric_version }}</code>{% if commit_sha %} · commit <code>{{ commit_sha[:8] }}</code>{% endif %}
+  </div>
+</header>
+
+<div class="verdict {{ 'go' if verdict == 'GO' else 'nogo' }}">
+  <div class="badge">{{ verdict }}</div>
+  <div>
+    <div class="label">Deployment verdict</div>
+    <div class="desc">
+      {% if verdict == 'GO' %}
+        All five readiness gates are within threshold. Recommend production rollout
+        with monitoring on hallucination rate and p95 latency.
+      {% else %}
+        One or more readiness gates are out of threshold — see the table below.
+        Recommend remediation before go-live.
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<h2>Headline metrics</h2>
+<div class="tiles">
+  <div class="tile">
+    <div class="k">Task success</div>
+    <div class="v {{ 'green' if agg.task_success_rate >= thresholds.task_success_rate else 'red' }}">{{ agg.task_success_rate|pct }}</div>
+    <div class="thr">threshold ≥ {{ thresholds.task_success_rate|pct }}</div>
+  </div>
+  <div class="tile">
+    <div class="k">Hallucination</div>
+    <div class="v {{ 'green' if agg.hallucination_rate <= thresholds.hallucination_rate_max else 'red' }}">{{ agg.hallucination_rate|pct }}</div>
+    <div class="thr">threshold ≤ {{ thresholds.hallucination_rate_max|pct }}</div>
+  </div>
+  <div class="tile">
+    <div class="k">Instruction following</div>
+    <div class="v {{ 'green' if agg.instruction_follow_mean >= thresholds.instruction_follow_min else 'red' }}">{{ "%.2f"|format(agg.instruction_follow_mean) }}</div>
+    <div class="thr">threshold ≥ {{ "%.2f"|format(thresholds.instruction_follow_min) }}</div>
+  </div>
+  <div class="tile">
+    <div class="k">p95 latency</div>
+    <div class="v {{ 'green' if agg.p95_latency_ms <= thresholds.p95_latency_ms_max else 'red' }}">{{ agg.p95_latency_ms }} ms</div>
+    <div class="thr">threshold ≤ {{ thresholds.p95_latency_ms_max }} ms</div>
+  </div>
+  <div class="tile">
+    <div class="k">Cost / run</div>
+    <div class="v {{ 'green' if agg.mean_cost_usd <= thresholds.cost_per_run_usd_max else 'red' }}">{{ agg.mean_cost_usd|money }}</div>
+    <div class="thr">threshold ≤ {{ thresholds.cost_per_run_usd_max|money }} · total {{ agg.total_cost_usd|money }}</div>
+  </div>
+</div>
+
+<h2>Readiness gates</h2>
+<table>
+  <thead><tr><th>Gate</th><th>Measured</th><th>Result</th></tr></thead>
+  <tbody>
+  {% for c in checks %}
+    <tr>
+      <td>{{ c.name }}</td>
+      <td>{{ c.value }}</td>
+      <td class="{{ 'check-ok' if c.passed else 'check-fail' }}">{{ 'PASS' if c.passed else 'FAIL' }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Capability × axis heatmap</h2>
+<div class="heatmap">
+<table>
+  <thead>
+    <tr>
+      <th></th>
+      {% for a in axes %}<th>{{ axis_labels[a] }}</th>{% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+  {% for row in grid %}
+    <tr>
+      <th style="text-transform:capitalize">{{ row.capability }} <small style="color:var(--muted);font-weight:400">({{ row.n }})</small></th>
+      {% for cell in row.cells %}
+        {% if cell.score is none %}
+          <td><div class="cell empty">—</div></td>
+        {% else %}
+          <td><div class="cell" style="background: {{ cell.score|score_color }}">
+            {{ cell.score|score_label }}
+            {% if cell.raw %}<small>{{ cell.raw }}</small>{% endif %}
+          </div></td>
+        {% endif %}
+      {% endfor %}
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% if regression.available %}
+<h2>Regression vs previous run</h2>
+<div class="regression">
+  <div class="reg-card win">
+    <div class="lbl">New passes</div>
+    <div class="n">{{ regression.wins|length }}</div>
+    {% if regression.wins %}<div class="reg-list">{{ regression.wins|join(', ') }}</div>{% endif %}
+  </div>
+  <div class="reg-card loss">
+    <div class="lbl">New failures</div>
+    <div class="n">{{ regression.losses|length }}</div>
+    {% if regression.losses %}<div class="reg-list">{{ regression.losses|join(', ') }}</div>{% endif %}
+  </div>
+  <div class="reg-card">
+    <div class="lbl">Unchanged</div>
+    <div class="n">{{ regression.unchanged_count }}</div>
+  </div>
+</div>
+{% endif %}
+
+<h2>Per-step cost & latency</h2>
+<table>
+  <thead><tr><th>Sub-agent</th><th>Mean latency</th><th>Cumulative cost</th></tr></thead>
+  <tbody>
+  {% for s in axis_breakdown %}
+    <tr>
+      <td style="text-transform:capitalize">{{ s.step }}</td>
+      <td>{{ s.mean_latency_ms }} ms</td>
+      <td>{{ s.cost_usd|money }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{% if failures %}
+<h2>Failing cases ({{ failures|length }} shown)</h2>
+<div class="failures">
+{% for f in failures %}
+  <div class="fail">
+    <div class="head">
+      <div>
+        <span class="id">{{ f.id }}</span> · <span style="text-transform:capitalize">{{ f.capability }}</span> · <span style="color:var(--muted)">{{ f.category }}</span>
+      </div>
+      <div class="scores">
+        <span>success: <strong>{{ f.task_success }}</strong></span>
+        <span>halluc: <strong>{{ f.hallucination_score }}/3</strong></span>
+        <span>instr: <strong>{{ f.instruction_following }}/3</strong></span>
+      </div>
+    </div>
+    <div class="prompt"><strong>Prompt:</strong> {{ f.prompt }}</div>
+    <div class="rationale"><strong>Judge:</strong> {{ f.rationale }}</div>
+    <pre>{{ f.output_preview }}</pre>
+  </div>
+{% endfor %}
+</div>
+{% else %}
+<h2>Failing cases</h2>
+<p style="color:var(--muted);font-size:13px">No failures in this run.</p>
+{% endif %}
+
+<footer>
+  Generated by the Wand Deployment Readiness Harness.
+  Rubric hash <code>{{ rubric_version }}</code> — change the judge prompt and this hash moves,
+  signalling that results are no longer comparable to prior runs.
+  Models: target <code>{{ target_model }}</code>, judge <code>{{ judge_model }}</code>.
+  Mode: <code>{{ mode }}</code>{% if commit_sha %}, commit <code>{{ commit_sha }}</code>{% endif %}.
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,118 @@
+name: Deployment Readiness Eval
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Harness mode (mock | live). Live requires ANTHROPIC_API_KEY secret."
+        required: false
+        default: "auto"
+
+permissions:
+  contents: write     # to push gh-pages
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Decide harness mode
+        id: mode
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          INPUT_MODE: ${{ inputs.mode }}
+        run: |
+          requested="${INPUT_MODE:-auto}"
+          if [ "$requested" = "live" ]; then
+            mode=live
+          elif [ "$requested" = "mock" ]; then
+            mode=mock
+          elif [ -n "$ANTHROPIC_API_KEY" ]; then
+            mode=live
+          else
+            mode=mock
+          fi
+          echo "Selected mode: $mode"
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+
+      - name: Run unit tests
+        run: python -m pytest tests/ -q
+
+      - name: Run evaluation suite
+        env:
+          HARNESS_MODE: ${{ steps.mode.outputs.mode }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        # The harness exits non-zero on NO-GO. We capture that into a job
+        # summary but don't fail the workflow — the report is still the
+        # deliverable, regardless of verdict.
+        run: |
+          set +e
+          python -m harness.run
+          echo "verdict_exit=$?" >> "$GITHUB_ENV"
+          set -e
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: readiness-report
+          path: reports/
+
+      - name: Prepare site
+        run: |
+          mkdir -p site
+          cp -r reports/latest/* site/
+          # Friendly redirect so / lands on the report.
+          if [ ! -f site/index.html ]; then
+            echo "<meta http-equiv='refresh' content='0; url=latest/index.html'>" > site/index.html
+          fi
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Job summary
+        run: |
+          {
+            echo "## Wand Deployment Readiness — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo ""
+            echo "- Mode: \`${{ steps.mode.outputs.mode }}\`"
+            if [ "${verdict_exit}" = "0" ]; then
+              echo "- Verdict: **GO**"
+            else
+              echo "- Verdict: **NO-GO** — see report for details."
+            fi
+            echo ""
+            echo "Report will be published to GitHub Pages once the deploy step completes."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    needs: eval
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
