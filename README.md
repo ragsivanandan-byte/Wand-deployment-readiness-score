@@ -66,15 +66,23 @@ git clone https://github.com/ragsivanandan-byte/Wand-deployment-readiness-score.
 cd Wand-deployment-readiness-score
 pip install -r requirements.txt
 
-# Mock mode — no API key needed, runs in ~2 seconds with deterministic outputs.
+# 1. Run the eval (mock mode — no API key needed, ~2 seconds, deterministic).
 HARNESS_MODE=mock python -m harness.run
+# → reports/latest/index.html  (static, self-contained, opens in any browser)
+# → reports/latest/run.json    (machine-readable; feeds the dashboard)
 
-# Live mode — uses Anthropic API.
+# 2. (Optional) interactive dashboard with filtering and threshold sliders.
+cd dashboard
+pnpm install
+cp ../reports/latest/run.json public/run.json
+BASE_PATH="" pnpm dev   # http://localhost:3000
+```
+
+For **live mode** (real Anthropic API calls):
+
+```bash
 export ANTHROPIC_API_KEY=sk-ant-...
 HARNESS_MODE=live python -m harness.run
-
-# Open the HTML report
-open reports/latest/index.html
 ```
 
 That's it. No Docker, no orchestrator, no vector DB.
@@ -86,6 +94,16 @@ python -m harness.run --list                          # show all cases
 python -m harness.run --category adversarial          # run only adversarial
 python -m harness.run --capability writer --limit 5   # subset
 ```
+
+### Two ways to view a report
+
+| | Static report | Interactive dashboard |
+|---|---|---|
+| **Path** | `reports/latest/index.html` | `dashboard/` (Next.js) |
+| **Tech** | Jinja2, no JS runtime needed | Next.js static export, no server needed |
+| **Features** | Hero, tiles, heatmap, failing cases | Static report + filters, threshold sliders, per-case drawer |
+| **Use case** | Email / Slack attachment, archival | Live demo, customer review session |
+| **Deployed to** | uploaded as CI artifact | GitHub Pages (the public URL above) |
 
 ---
 

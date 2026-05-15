@@ -83,6 +83,31 @@ Sequential is fine for a 33-case suite (~90s end-to-end live). The
 config has a knob to lift it to ~5 when the suite grows; we didn't
 need it for the demo.
 
+## Next.js dashboard on top of the Python harness
+
+The Python harness emits two artifacts: a self-contained HTML report
+(Jinja2) and a `run.json`. The Next.js app (`dashboard/`) is a static
+export that reads the JSON at *build time* — so the deployed Pages URL
+ships pre-rendered HTML (verdict, tiles, heatmap, failing cases all
+visible on first paint, no loading spinner), and React hydrates on top
+to add the interactive bits:
+
+- filter by category / capability,
+- "failures only" toggle,
+- threshold sliders that recompute the verdict client-side (negotiate
+  what "ready" means with the customer, live),
+- click-to-open drawer with the full per-step trace.
+
+Splitting eval logic (Python) from presentation (Next.js) lets each
+half use the best tool for the job: Python for orchestrating LLM
+calls and YAML test cases, React for interactive UI. The seam is a
+versioned JSON schema (`dashboard/lib/types.ts` mirrors what
+`harness/runner.py` writes).
+
+The static Jinja report is still produced, uploaded as a CI artifact,
+and works in environments with no JS runtime — useful when emailing the
+verdict to someone who can't open Pages.
+
 ## What we deliberately did not build
 
 - **Multi-judge consensus** — useful when scaling rubrics, but adds
@@ -94,3 +119,6 @@ need it for the demo.
   because a YAML file would invite arguments about syntax instead of
   arguments about values.
 - **Token-level caching** — meaningful at scale; premature here.
+- **Server-rendered dashboard** — Next.js could run on Vercel with API
+  routes, but static export keeps the surface tiny: no server, no env
+  vars in production, deploys on GitHub Pages with no infrastructure.

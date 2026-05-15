@@ -58,12 +58,19 @@ After the workflow finishes:
 
 1. Look at the Actions tab — the `eval` and `deploy` jobs should both
    be green.
-2. Open the Pages URL. You should see the report banner, five metric
-   tiles, the heatmap, and the failing-cases section.
-3. If anything is red, the Actions log will say which step failed and
+2. Open the Pages URL. You should see the **Next.js dashboard** —
+   verdict banner, five metric tiles, the heatmap, filters at the top
+   (category, capability, threshold sliders), and clickable failing
+   cases that open a side drawer with the full per-step trace.
+3. The CI also uploads the raw static report and the run JSON as a
+   downloadable artifact named `readiness-bundle` (Actions → workflow
+   run → bottom of the page).
+4. If anything is red, the Actions log will say which step failed and
    why. The most common first-run issues are:
    - Pages not enabled → "Pages site not found" on `deploy-pages` step
    - Secret name typo → live mode tries, fails on the first request,
      workflow falls back to NO-GO verdict (still produces a report)
    - App permission not refreshed → push step would fail before this
      point, so you wouldn't see CI at all
+   - `pnpm install` failure → usually a transient registry hiccup;
+     re-run the workflow.

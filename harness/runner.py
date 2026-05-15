@@ -69,8 +69,24 @@ def run_suite(
     results: list[CaseResult] = []
     for i, case in enumerate(cases, 1):
         print(f"  [{i:>2}/{len(cases)}] {case.id} ({case.capability})")
-        resp = adapter.run(case)
-        verdict = judge(case, resp.output, settings=settings, client=adapter._client)
+        try:
+            resp = adapter.run(case)
+            verdict = judge(case, resp.output, settings=settings, client=adapter._client)
+        except Exception as exc:
+            # Surface the failure as a hard 0 across the rubric so the report
+            # shows the case and the reason. We don't let one upstream blip
+            # take down the whole suite.
+            print(f"    ! exception during case {case.id}: {exc!r}")
+            resp = TargetResponse(
+                output=f"[runner-exception] {exc!r}",
+                latency_ms=0, input_tokens=0, output_tokens=0,
+                model=settings.target_model, trace=[],
+            )
+            verdict = JudgeVerdict(
+                task_success=0, hallucination_score=3, instruction_following=0,
+                rationale=f"Exception during execution: {type(exc).__name__}",
+                input_tokens=0, output_tokens=0, latency_ms=0,
+            )
         results.append(CaseResult(case=case, response=resp, verdict=verdict))
 
     payload = {

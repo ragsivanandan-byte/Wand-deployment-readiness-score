@@ -47,11 +47,16 @@ Scroll to the heatmap.
 
 ## 0:35 — The failing cases (10 seconds)
 
-Scroll to the "Failing cases" section.
+Scroll to the "Failing cases" section. Click one of the red cards.
 
-> "And critically, when something fails, the customer sees the actual
-> prompt, the judge's reasoning, and the raw agent output. No black
-> box. They can argue with the judge."
+> "And critically, when something fails, I open the case — full input,
+> full per-step trace through every sub-agent, the judge's reasoning,
+> the raw output. No black box. The customer can argue with the judge."
+
+If asked: the threshold sliders at the top of the dashboard let the
+customer see what verdict their *own* business thresholds would
+produce — useful for negotiating "what good enough means" before
+go-live.
 
 ---
 

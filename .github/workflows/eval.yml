@@ -12,7 +12,7 @@ on:
         default: "auto"
 
 permissions:
-  contents: write     # to push gh-pages
+  contents: write
   pages: write
   id-token: write
 
@@ -23,16 +23,41 @@ concurrency:
 jobs:
   eval:
     runs-on: ubuntu-latest
+    outputs:
+      verdict: ${{ steps.run.outputs.verdict }}
+      mode: ${{ steps.mode.outputs.mode }}
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
 
-      - name: Install dependencies
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('dashboard/pnpm-lock.yaml', 'dashboard/package.json') }}
+
+      - name: Install Python deps
         run: pip install -r requirements.txt
+
+      - name: Install dashboard deps
+        working-directory: dashboard
+        run: pnpm install --frozen-lockfile
 
       - name: Decide harness mode
         id: mode
@@ -41,14 +66,10 @@ jobs:
           INPUT_MODE: ${{ inputs.mode }}
         run: |
           requested="${INPUT_MODE:-auto}"
-          if [ "$requested" = "live" ]; then
-            mode=live
-          elif [ "$requested" = "mock" ]; then
-            mode=mock
-          elif [ -n "$ANTHROPIC_API_KEY" ]; then
-            mode=live
-          else
-            mode=mock
+          if [ "$requested" = "live" ]; then mode=live
+          elif [ "$requested" = "mock" ]; then mode=mock
+          elif [ -n "$ANTHROPIC_API_KEY" ]; then mode=live
+          else mode=mock
           fi
           echo "Selected mode: $mode"
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
@@ -57,32 +78,37 @@ jobs:
         run: python -m pytest tests/ -q
 
       - name: Run evaluation suite
+        id: run
         env:
           HARNESS_MODE: ${{ steps.mode.outputs.mode }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        # The harness exits non-zero on NO-GO. We capture that into a job
-        # summary but don't fail the workflow — the report is still the
-        # deliverable, regardless of verdict.
         run: |
           set +e
           python -m harness.run
-          echo "verdict_exit=$?" >> "$GITHUB_ENV"
+          exit_code=$?
           set -e
+          if [ "$exit_code" = "0" ]; then
+            echo "verdict=GO" >> "$GITHUB_OUTPUT"
+          else
+            echo "verdict=NO-GO" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Upload report artifact
+      - name: Copy run.json into dashboard/public
+        run: cp reports/latest/run.json dashboard/public/run.json
+
+      - name: Build dashboard
+        working-directory: dashboard
+        env:
+          BASE_PATH: /Wand-deployment-readiness-score
+        run: pnpm build
+
+      - name: Upload artifacts (raw report + dashboard)
         uses: actions/upload-artifact@v4
         with:
-          name: readiness-report
-          path: reports/
-
-      - name: Prepare site
-        run: |
-          mkdir -p site
-          cp -r reports/latest/* site/
-          # Friendly redirect so / lands on the report.
-          if [ ! -f site/index.html ]; then
-            echo "<meta http-equiv='refresh' content='0; url=latest/index.html'>" > site/index.html
-          fi
+          name: readiness-bundle
+          path: |
+            reports/
+            dashboard/out/
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -90,7 +116,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: dashboard/out
 
       - name: Job summary
         run: |
@@ -98,13 +124,10 @@ jobs:
             echo "## Wand Deployment Readiness — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo ""
             echo "- Mode: \`${{ steps.mode.outputs.mode }}\`"
-            if [ "${verdict_exit}" = "0" ]; then
-              echo "- Verdict: **GO**"
-            else
-              echo "- Verdict: **NO-GO** — see report for details."
-            fi
+            echo "- Verdict: **${{ steps.run.outputs.verdict }}**"
+            echo "- Dashboard built from \`reports/latest/run.json\` → \`dashboard/out/\`"
             echo ""
-            echo "Report will be published to GitHub Pages once the deploy step completes."
+            echo "Public report (after deploy step): https://ragsivanandan-byte.github.io/Wand-deployment-readiness-score/"
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
