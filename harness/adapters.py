@@ -22,6 +22,8 @@ from harness.config import PRICING, Settings
 
 @dataclass
 class TestCase:
+    __test__ = False  # tell pytest this isn't a test class
+
     id: str
     capability: str           # researcher / analyst / writer / reviewer / orchestrator
     category: str             # golden / adversarial / edge_case

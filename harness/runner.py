@@ -49,9 +49,23 @@ def load_test_cases() -> list[TestCase]:
     return cases
 
 
-def run_suite(settings: Settings) -> dict:
+def run_suite(
+    settings: Settings,
+    *,
+    category: str | None = None,
+    capability: str | None = None,
+    limit: int | None = None,
+) -> dict:
     adapter = FinanceWorkflowAdapter(settings)
     cases = load_test_cases()
+    if category:
+        cases = [c for c in cases if c.category == category]
+    if capability:
+        cases = [c for c in cases if c.capability == capability]
+    if limit:
+        cases = cases[:limit]
+    if not cases:
+        raise RuntimeError("No cases matched the supplied filters")
     results: list[CaseResult] = []
     for i, case in enumerate(cases, 1):
         print(f"  [{i:>2}/{len(cases)}] {case.id} ({case.capability})")

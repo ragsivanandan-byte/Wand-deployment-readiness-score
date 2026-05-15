@@ -77,6 +77,14 @@ open reports/latest/index.html
 
 That's it. No Docker, no orchestrator, no vector DB.
 
+### CLI flags
+
+```bash
+python -m harness.run --list                          # show all cases
+python -m harness.run --category adversarial          # run only adversarial
+python -m harness.run --capability writer --limit 5   # subset
+```
+
 ---
 
 ## How it fits a customer engagement
@@ -99,6 +107,8 @@ support triage, anything.
 ---
 
 ## Architecture
+
+![Pipeline](docs/architecture.svg)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
