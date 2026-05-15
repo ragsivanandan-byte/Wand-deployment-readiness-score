@@ -1,6 +1,6 @@
 {
-  "run_id": "run-20260515T225006Z",
-  "generated_at": "2026-05-15T22:50:06.364207+00:00",
+  "run_id": "run-20260515T225444Z",
+  "generated_at": "2026-05-15T22:54:45.034901+00:00",
   "mode": "mock",
   "target_model": "claude-haiku-4-5",
   "judge_model": "claude-sonnet-4-6",
