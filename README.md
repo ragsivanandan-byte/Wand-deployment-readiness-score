@@ -7,6 +7,8 @@ verdict and a public HTML report you can hand to the customer's CTO.
 > 🟢 **[View the latest live report →](https://ragsivanandan-byte.github.io/Wand-deployment-readiness-score/)**
 > *(published by GitHub Actions on every push)*
 
+![Report preview](docs/report-preview.svg)
+
 ---
 
 ## Why this exists
