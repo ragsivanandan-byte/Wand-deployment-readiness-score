@@ -1,44 +1,80 @@
 # STATUS
 
-**Last updated:** 2026-05-16T06:35:00Z
-**Current phase:** ✅ READY FOR DEMO — site live, repo public-clean
+**Last updated:** 2026-05-16T07:00:00Z
+**Current phase:** ✅ Audit complete, fixes applied, demo-ready
 
 ## Live URLs
 
 - **Repo:** https://github.com/ragsivanandan-byte/Wand-deployment-readiness-score
-- **Dashboard (the thing you show Tony):** https://ragsivanandan-byte.github.io/Wand-deployment-readiness-score/
+- **Dashboard:** https://ragsivanandan-byte.github.io/Wand-deployment-readiness-score/
 
-## What's deployed
+## Audit report (this session)
 
-- 9 commits on default branch `claude/wand-deployment-readiness-CDmcU` (tip `daa1133`)
-- gh-pages branch with the built Next.js static export, serving the live dashboard
-- GitHub Pages enabled, `build_type: legacy`, source = `gh-pages` branch, public=true, build status=`built`
+### What I checked
 
-## What you should do next
+| Area | Method | Result |
+|---|---|---|
+| File structure & .gitignore | `git ls-files`, `git check-ignore` | ✅ Clean — no secrets, no build artefacts tracked |
+| Unit tests (14) | `pytest tests/` | ✅ 14/14 pass |
+| Mock harness end-to-end | `python -m harness.run` | ✅ VERDICT GO, deterministic |
+| CLI flag combinations | --list / --category / --capability / --limit | ✅ All work; bad inputs now error cleanly |
+| Live-mode code path | Import + construct without calling API | ✅ Settings, adapter, client wire up |
+| Live-mode missing key | `HARNESS_MODE=live` no `ANTHROPIC_API_KEY` | ✅ Now prints one-line error (was stack trace) |
+| Test case YAML (33 cases) | Field validation + ID uniqueness | ✅ All have required fields, no dup IDs |
+| Dashboard TypeScript | `npx tsc --noEmit` | ✅ No errors |
+| Dashboard SSG | Inspect built `out/index.html` | ✅ Verdict, heatmap, cases baked into initial HTML (17.8KB visible body) |
+| Threshold sliders logic | Verified `goNoGo()` in `metrics.ts` matches Python | ✅ Same semantics |
+| Determinism | Two consecutive mock runs, hash-compare | ✅ Identical content (modulo run_id/timestamp) |
+| Rubric hash stability | Reload + recompute | ✅ Stable: `1745b09f15c1` |
+| Judge JSON parser | Malformed inputs: trailing commas, prose-wrapped, fenced | ✅ Tolerant; defaults to fail on unparseable |
+| Anthropic model IDs | Cross-check against SDK's known list | ✅ `claude-haiku-4-5`, `claude-sonnet-4-6` both valid |
+| Workflow YAML | `yaml.safe_load`, step inventory | ✅ Valid, 16 eval steps + deploy job |
+| README link integrity | Resolve every relative link | ✅ All resolve |
+| Deployed Pages site | GitHub API: pages, builds/latest | ✅ status=`built`, public, https_enforced |
+| Deployed gh-pages content | Fetch raw `index.html` + `run.json` | ✅ Run-id, metrics consistent with local |
+| Mobile-responsive Tailwind classes | grep `md:` / `flex-wrap` / `overflow-x-auto` | ✅ Filter bar wraps, heatmap scrolls, drawer full-width |
+| Secrets in repo | Regex sweep across tracked files | ✅ Only placeholder `sk-ant-...` example in README |
 
-1. **Open the dashboard URL above on your phone.** Verify the verdict banner, metric tiles, heatmap, and failing-cases list render. Try the threshold sliders.
-2. **Revoke the temporary PAT** at https://github.com/settings/tokens (find "Claude Code push session", click Delete). The token has done its job; killing it removes the risk of accidental misuse.
-3. **(Optional) Walk through `docs/DEMO_SCRIPT.md`** out loud, in front of a mirror, ideally with your phone showing the dashboard live. 60 seconds.
+### Issues found and fixed
 
-## What's intentionally not done
+| # | Severity | Issue | Fix |
+|---|---|---|---|
+| 1 | UX | `--capability foobar` raised Python traceback | `argparse choices=` + try/except in `main()` |
+| 2 | Bug | `--limit 0` treated as "no limit" because of `if args.limit:` | Switched to `is not None` |
+| 3 | UX | Live mode without API key showed stack trace | Caught in `main()`, prints one-line error |
+| 4 | Doc | README ASCII architecture diagram claimed CI runs on push | Replaced with honest pipeline showing the actual gh-pages flow |
+| 5 | Doc | "Two ways to view a report" table said static report is "uploaded as CI artifact" | Changed to "Generated on disk after `python -m harness.run`" |
+| 6 | Doc | "Status of this work" claimed "Tested end-to-end in CI" | Trimmed to what's actually true |
+| 7 | Doc | No `LICENSE` file though README claimed MIT | Added `LICENSE` (MIT) |
+| 8 | Doc | `docs/SETUP.md` didn't mention you must flip Pages source from "branch" to "Actions" when enabling CI | Added that step |
+| 9 | Doc | `docs/architecture.svg` block 6 referenced `.github/workflows/eval.yml` | Updated to point at `docs/ci-workflow.yml` + describe gh-pages reality |
+| 10 | Hygiene | `dashboard/tsconfig.tsbuildinfo` was being staged | Added to `dashboard/.gitignore` |
+| 11 | UX | Dashboard threshold panel used `absolute` positioning → could glitch on mobile because no positioned ancestor | Removed `absolute md:static`, flows inline now |
+| 12 | UX | Footer missing utility links | Added "Download raw run.json" and "Source on GitHub" |
 
-- **CI workflow:** lives at `docs/ci-workflow.yml`, NOT at `.github/workflows/eval.yml`. The PAT I received was `repo`-scoped, not `workflow`-scoped — GitHub rejects PAT pushes to `.github/workflows/*` without the `workflow` scope. To enable CI auto-deploy on future pushes:
-  - Quickest path: open the repo on github.com → copy the contents of `docs/ci-workflow.yml` → use **Add file → Create new file** → name it `.github/workflows/eval.yml` → paste → commit. The web UI bypasses the scope check. See `docs/SETUP.md` step 1.
-  - Or: regenerate the PAT with `repo` AND `workflow` scopes, give it back, I'll push.
-- **ANTHROPIC_API_KEY repo secret:** without it, CI runs in mock mode (still produces a valid report with deterministic data). With it, CI runs live against Anthropic for ~$0.17/run. See `docs/SETUP.md` step 3.
+### Design tradeoffs I noticed but did **not** fix
 
-## Open decisions made
+- **Reviewer-specific test cases** (3 of them: `golden_reviewer_pass`, `golden_reviewer_clean`, `adv_review_should_fail`) run through the full 4-step workflow, not the reviewer in isolation. In live mode the reviewer would evaluate the writer's freshly-generated note rather than the user-supplied "wrong note" in the test fixture. The judge catches this as a (correct) failure for `adv_review_should_fail`. In mock mode the discrepancy is masked because mock targets receive `must_contain` hints. Fixing this would mean routing test cases to a single sub-agent based on `capability`, which is a larger refactor than the demo needs.
+- **Report-preview SVG** in the README shows the original Jinja report layout, not the current Next.js dashboard (which adds filter chips + slider panel on top of the same visual language). Close enough — the README text already names the interactive features. Replacing the SVG would be busywork.
 
-- **gh-pages branch deploy instead of GitHub Actions:** Plan B because the PAT lacked workflow scope. Same end-user experience (dashboard at the same URL) but no CI loop until the workflow file is moved into `.github/workflows/`.
-- **Default branch = `claude/wand-deployment-readiness-CDmcU`** so the README is the repo landing page. You can rename it to `main` via Settings → Branches if you prefer.
-- **Mock calibration unchanged:** suite lands on GO with 2 visible failing cases (good demo story).
+## Final commit / branch state
 
-## Blockers
+- Default branch: `claude/wand-deployment-readiness-CDmcU` (12 commits, tip `0c1f76e`)
+- Deploy branch: `gh-pages` (force-pushed as the dashboard is rebuilt; latest commit `ca1ed19`)
+- Pages: built, public, https_enforced, source = `gh-pages`/`/`
 
-None. Demo-ready.
+## Open todo for you
+
+1. **Open the dashboard on your phone** — verify the verdict banner, tiles, heatmap, click a failing case, drag a threshold slider. Should take 30 seconds.
+2. **Revoke the PAT** at https://github.com/settings/tokens (token name "Claude Code push session") — security hygiene.
+3. **Optional, before the Tony interview:** read `docs/DEMO_SCRIPT.md` once aloud.
+
+## Open todo for me (only if you ask)
+
+- Enable the CI workflow loop (requires either a PAT with `workflow` scope, or you copy `docs/ci-workflow.yml` to `.github/workflows/eval.yml` via the GitHub web editor — see `docs/SETUP.md` step 1).
+- Decompose the reviewer-specific test cases so they exercise the reviewer step in isolation (would make live-mode results cleaner for those 3 cases).
+- Generate a real screenshot of the live dashboard to replace `docs/report-preview.svg`.
 
 ## How to resume
 
-If you want me to push the workflow file (so CI auto-deploys on every push going forward), regenerate the PAT with `repo` + `workflow` scopes, paste it, and say "push the workflow".
-
-If something on the live site looks wrong, tell me what and I'll fix it (I can rebuild the dashboard and force-push gh-pages without needing any additional scope).
+Say "continue" and I'll re-read this STATUS.md and pick up from "Open todo for me".
