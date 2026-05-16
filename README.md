@@ -4,8 +4,10 @@
 production traffic.** Plug in your agent, run the suite, get a GO / NO-GO
 verdict and a public HTML report you can hand to the customer's CTO.
 
-> 🟢 **[View the latest live report →](https://ragsivanandan-byte.github.io/Wand-deployment-readiness-score/)**
-> *(published by GitHub Actions on every push)*
+> 🟢 **[View the live dashboard →](https://ragsivanandan-byte.github.io/Wand-deployment-readiness-score/)**
+> *Verdict banner, capability × axis heatmap, threshold sliders, and per-case drill-down. Try the
+> threshold sliders — they recompute GO/NO-GO client-side so a customer can negotiate "what good
+> enough means" live.*
 
 ![Report preview](docs/report-preview.svg)
 
