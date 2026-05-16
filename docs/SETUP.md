@@ -4,35 +4,44 @@ Three things need to be in place before the CI can publish a public report.
 None of them is automatable from a GitHub App; they all need a human at
 `github.com/settings`.
 
-## 1. Grant the Claude Code GitHub App `contents:write`
+## 0. Quick start — site is already live
 
-The App can already read this repo but not write to it, which blocks both
-my `git push` and the MCP `push_files` calls.
+The dashboard at
+**https://ragsivanandan-byte.github.io/Wand-deployment-readiness-score/**
+is published from the `gh-pages` branch (a manual deploy of
+`dashboard/out/`). It works out-of-the-box without any CI configuration.
+You only need the steps below if you want fresh runs to redeploy
+automatically on every push.
+
+## 1. Enable the CI workflow
+
+The repository ships a ready-to-use GitHub Actions workflow at
+[`docs/ci-workflow.yml`](ci-workflow.yml). It is **not** under
+`.github/workflows/` by default because pushing files in that path
+requires a Personal Access Token with the `workflow` scope, and we
+shipped without it.
+
+To enable it:
+
+1. Open the repo on github.com.
+2. Navigate to `docs/ci-workflow.yml`.
+3. Click the pencil (Edit) icon, copy the contents.
+4. Use **Add file → Create new file** at the repo root, name it
+   `.github/workflows/eval.yml`, paste, commit. GitHub will accept
+   workflow file edits made directly through the web UI without
+   special scopes.
+5. Every push from now on will run the eval suite, rebuild the
+   dashboard, and redeploy GitHub Pages.
+
+## 2. Grant the Claude Code GitHub App `contents:write`
+
+This is only needed if you want Claude (the agent that built this) to
+push follow-up commits in future sessions. For the demo itself, it's
+optional.
 
 Go to **https://github.com/settings/installations** → **Claude Code** →
-**Repository access** → make sure `Wand-deployment-readiness-score` is in
-the allowed list with full repository scope. If you see "Read access to
-contents", click **Configure** and bump it to write.
-
-Once that's done, say "continue" and I'll push.
-
-## 2. Enable GitHub Pages
-
-Settings → **Pages** for the repo.
-
-- **Source:** *GitHub Actions* (not "Deploy from a branch").
-
-That's it. The workflow (`.github/workflows/eval.yml`) uses the modern
-`actions/deploy-pages` action; there is no `gh-pages` branch to create.
-
-Once enabled, every push runs the eval suite and publishes a fresh
-`reports/latest/index.html` to:
-
-> https://ragsivanandan-byte.github.io/Wand-deployment-readiness-score/
-
-If you skip this step, the workflow still runs and uploads the report as
-an artifact you can download from the Actions tab — but the public URL
-won't exist.
+**Repository access** → make sure `Wand-deployment-readiness-score` is
+in the allowed list with full repository scope.
 
 ## 3. (Optional) Add `ANTHROPIC_API_KEY` for live mode
 
@@ -70,7 +79,5 @@ After the workflow finishes:
    - Pages not enabled → "Pages site not found" on `deploy-pages` step
    - Secret name typo → live mode tries, fails on the first request,
      workflow falls back to NO-GO verdict (still produces a report)
-   - App permission not refreshed → push step would fail before this
-     point, so you wouldn't see CI at all
    - `pnpm install` failure → usually a transient registry hiccup;
      re-run the workflow.
