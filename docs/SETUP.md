@@ -30,7 +30,13 @@ To enable it:
    `.github/workflows/eval.yml`, paste, commit. GitHub will accept
    workflow file edits made directly through the web UI without
    special scopes.
-5. Every push from now on will run the eval suite, rebuild the
+5. **Important — switch Pages source.** Pages is currently set to
+   "Deploy from a branch" (`gh-pages`). The workflow uses the modern
+   `actions/deploy-pages` action which requires the source to be
+   "GitHub Actions". Go to **Settings → Pages → Build and deployment**
+   and flip the source dropdown. Otherwise the workflow's deploy step
+   will fail.
+6. Every push from now on will run the eval suite, rebuild the
    dashboard, and redeploy GitHub Pages.
 
 ## 2. Grant the Claude Code GitHub App `contents:write`

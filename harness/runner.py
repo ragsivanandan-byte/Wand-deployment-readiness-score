@@ -62,7 +62,7 @@ def run_suite(
         cases = [c for c in cases if c.category == category]
     if capability:
         cases = [c for c in cases if c.capability == capability]
-    if limit:
+    if limit is not None:
         cases = cases[:limit]
     if not cases:
         raise RuntimeError("No cases matched the supplied filters")

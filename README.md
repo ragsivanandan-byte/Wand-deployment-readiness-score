@@ -104,8 +104,8 @@ python -m harness.run --capability writer --limit 5   # subset
 | **Path** | `reports/latest/index.html` | `dashboard/` (Next.js) |
 | **Tech** | Jinja2, no JS runtime needed | Next.js static export, no server needed |
 | **Features** | Hero, tiles, heatmap, failing cases | Static report + filters, threshold sliders, per-case drawer |
-| **Use case** | Email / Slack attachment, archival | Live demo, customer review session |
-| **Deployed to** | uploaded as CI artifact | GitHub Pages (the public URL above) |
+| **Use case** | Email / Slack attachment, offline read | Live demo, customer review session |
+| **Where it lives** | Generated on disk after `python -m harness.run` | Published on GitHub Pages — public URL above |
 
 ---
 
@@ -133,23 +133,33 @@ support triage, anything.
 ![Pipeline](docs/architecture.svg)
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│                          GitHub Actions                              │
-│                                                                      │
-│   push ─►  pytest  ─►  harness.run  ─►  reports/latest/index.html    │
-│                            │                       │                 │
-│                            │                       └─► GitHub Pages  │
-│                            │                                         │
-└────────────────────────────┼─────────────────────────────────────────┘
-                             │
-        ┌────────────────────┼─────────────────────┐
-        ▼                    ▼                     ▼
-  test_cases/*.yaml   target_agent/           harness/
-     33 finance       4 sub-agents:           runner   ─► loads cases, runs adapter
-     cases across     researcher              adapters ─► thin shim to target system
-     golden /         analyst                 judge    ─► Claude Sonnet 4.6, rubric v1.0
-     adversarial /    writer                  report   ─► aggregates → HTML + heatmap
-     edge cases       reviewer                config   ─► thresholds & pricing
+       test_cases/*.yaml          target_agent/            harness/
+       ───────────────            ─────────────            ────────
+       golden.yaml      ───►      researcher    ───►       runner    ─► loads cases, runs adapter
+       adversarial.yaml           analyst                  adapters  ─► thin shim to target system
+       edge_cases.yaml            writer                   judge     ─► Claude Sonnet 4.6, rubric v1.0
+       33 cases total             reviewer                 report    ─► aggregates → HTML + heatmap
+                                  orchestrator             config    ─► thresholds & pricing
+                                       │                       │
+                                       └───────────┬───────────┘
+                                                   ▼
+                              ┌────────────────────────────────────────────┐
+                              │ python -m harness.run                      │
+                              │   • reports/latest/index.html  (Jinja2)    │
+                              │   • reports/latest/run.json                │
+                              └────────────────────┬───────────────────────┘
+                                                   ▼
+                              ┌────────────────────────────────────────────┐
+                              │ dashboard/  (Next.js static export)        │
+                              │   reads run.json at build time             │
+                              │   bakes verdict into initial HTML          │
+                              │   hydrates filters + threshold sliders     │
+                              └────────────────────┬───────────────────────┘
+                                                   ▼
+                              ┌────────────────────────────────────────────┐
+                              │ GitHub Pages (gh-pages branch)             │
+                              │   the public URL above                     │
+                              └────────────────────────────────────────────┘
 ```
 
 - **No LangChain / LangGraph.** The orchestrator is 50 lines of plain
@@ -161,6 +171,9 @@ support triage, anything.
 - **Rubric versioning.** The judge prompt is hashed into every report.
   If you change how you grade, the hash moves, and the regression panel
   warns that results aren't comparable to prior runs.
+- **Optional CI loop.** The same pipeline can run on every push by
+  copying [`docs/ci-workflow.yml`](docs/ci-workflow.yml) into
+  `.github/workflows/eval.yml`. See [`docs/SETUP.md`](docs/SETUP.md).
 
 ---
 
@@ -189,11 +202,14 @@ scoring kicks in.
 ## Status of this work
 
 Built as a Forward Deployed Engineer reference implementation. Vertical
-shipped: **finance / buy-side earnings**. 33 test cases. Tested end-to-end
-in CI. Report deploys automatically to GitHub Pages.
+shipped: **finance / buy-side earnings**. 33 test cases. Suite passes
+locally end-to-end (`pytest tests/` + `python -m harness.run`). The
+dashboard is live on GitHub Pages and rebuilds when the `gh-pages`
+branch is updated. A ready-to-go CI workflow is included
+([`docs/ci-workflow.yml`](docs/ci-workflow.yml)) — copy it to
+`.github/workflows/eval.yml` and every push redeploys automatically.
 
-- [`docs/SETUP.md`](docs/SETUP.md) — three-step first-time configuration
-  (App permissions, GitHub Pages, API key).
+- [`docs/SETUP.md`](docs/SETUP.md) — one-time configuration (CI, API key).
 - [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) — 60-second walk-through.
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) — design trade-offs.
 
@@ -201,4 +217,4 @@ in CI. Report deploys automatically to GitHub Pages.
 
 ## License
 
-MIT.
+MIT — see [`LICENSE`](LICENSE).

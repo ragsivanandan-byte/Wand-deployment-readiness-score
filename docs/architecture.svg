@@ -102,15 +102,15 @@
     <text x="376" y="406" class="muted">single self-contained .html file</text>
   </g>
 
-  <!-- CI -->
+  <!-- CI / Pages -->
   <g>
-    <text x="660" y="296" class="h">6. CI / Pages</text>
+    <text x="660" y="296" class="h">6. Pages publish</text>
     <rect x="660" y="304" width="200" height="120" class="panel"/>
-    <text x="676" y="328" class="label">.github/workflows/eval.yml</text>
-    <text x="676" y="350" class="muted">on push: pytest → run → publish</text>
-    <text x="676" y="368" class="muted">live if ANTHROPIC_API_KEY set,</text>
-    <text x="676" y="384" class="muted">mock otherwise.</text>
-    <text x="676" y="406" class="muted">→ GitHub Pages (public URL)</text>
+    <text x="676" y="328" class="label">gh-pages branch</text>
+    <text x="676" y="350" class="muted">Built dashboard pushed</text>
+    <text x="676" y="368" class="muted">to a deploy branch.</text>
+    <text x="676" y="390" class="muted">Optional CI loop:</text>
+    <text x="676" y="406" class="muted">docs/ci-workflow.yml</text>
   </g>
 
   <!-- Cross-section arrows -->
